@@ -94,3 +94,30 @@ func UpdateProductByID(id int64, p models.Product) error {
 	}
 	return nil
 }
+
+// GET ALL
+func GetAllProducts() (sp []models.Product, err error) {
+	conn, err := config.OpenConn()
+	if err != nil {
+		return
+	}
+	defer conn.Close()
+
+	rows, err := conn.Query(`SELECT * FROM products`)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var p models.Product
+
+		err = rows.Scan(&p.ID, &p.Name, &p.Price)
+		if err != nil {
+			continue
+		}
+
+		sp = append(sp, p)
+	}
+	return
+}

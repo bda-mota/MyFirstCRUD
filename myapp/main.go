@@ -19,6 +19,7 @@ func main() {
 	}
 	defer db.Close()
 	r.HandleFunc("/products", handlers.CreateProduct).Methods("POST")
+	r.HandleFunc("/products/list", handlers.GetAllProducts).Methods("GET")
 	r.HandleFunc("/products/{id}", handlers.GetProductByID).Methods("GET")
 	r.HandleFunc("/products/{id}", handlers.DeleteProductByID).Methods("DELETE")
 	r.HandleFunc("/products/{id}", handlers.UpdateProductByID).Methods("PUT")

@@ -111,3 +111,16 @@ func UpdateProductByID(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"message": "Product updated successfully"})
 }
+
+// GET ALL
+func GetAllProducts(w http.ResponseWriter, r *http.Request) {
+	list, err := repository.GetAllProducts()
+	if err != nil {
+		ResponseError(w, "products not found", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(list)
+}
