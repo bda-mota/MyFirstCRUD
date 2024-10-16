@@ -8,6 +8,7 @@ import (
 	"github.com/bda-mota/MyFirstCRUD/myapp/models"
 )
 
+// POST
 func InsertProduct(p models.Product) (int64, error) {
 	conn, err := config.OpenConn()
 	if err != nil {
@@ -27,6 +28,7 @@ func InsertProduct(p models.Product) (int64, error) {
 	return id, nil
 }
 
+// GET
 func GetProductByID(id int64) (models.Product, error) {
 	conn, err := config.OpenConn()
 	if err != nil {
@@ -47,6 +49,7 @@ func GetProductByID(id int64) (models.Product, error) {
 	return getProduct, nil
 }
 
+// DELETE
 func DeleteProductByID(id int64) error {
 	conn, err := config.OpenConn()
 	if err != nil {
@@ -68,5 +71,26 @@ func DeleteProductByID(id int64) error {
 		return fmt.Errorf("no product found with ID %d", id)
 	}
 
+	return nil
+}
+
+// PUT
+func UpdateProductByID(id int64, p models.Product) error {
+	conn, err := config.OpenConn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	sql := `UPDATE products SET name = $1, price = $2 WHERE id = $3`
+	res, err := conn.Exec(sql, p.Name, p.Price, id)
+	if err != nil {
+		return fmt.Errorf("could not update product: %v", err)
+	}
+
+	rowsAffected, err := res.RowsAffected()
+	if err != nil || rowsAffected == 0 {
+		return fmt.Errorf("no product found with ID %d", id)
+	}
 	return nil
 }

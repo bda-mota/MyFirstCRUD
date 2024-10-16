@@ -21,7 +21,7 @@ func main() {
 	r.HandleFunc("/products", handlers.CreateProduct).Methods("POST")
 	r.HandleFunc("/products/{id}", handlers.GetProductByID).Methods("GET")
 	r.HandleFunc("/products/{id}", handlers.DeleteProductByID).Methods("DELETE")
-	//r.HandleFunc("/products/{id}", handlers.UpdateProductByID).Methods("PUT")
+	r.HandleFunc("/products/{id}", handlers.UpdateProductByID).Methods("PUT")
 
 	r.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Route not found", http.StatusNotFound)

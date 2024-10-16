@@ -10,6 +10,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
+// POST
 func CreateProduct(w http.ResponseWriter, r *http.Request) {
 	var newProduct models.Product
 
@@ -37,6 +38,7 @@ func CreateProduct(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// GET
 func GetProductByID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	productID := vars["id"]
@@ -62,6 +64,7 @@ func GetProductByID(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(getProduct)
 }
 
+// DELETE
 func DeleteProductByID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	productID := vars["id"]
@@ -81,39 +84,30 @@ func DeleteProductByID(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// func UpdateProductByID(w http.ResponseWriter, r *http.Request) {
-// 	vars := mux.Vars(r)
-// 	productID := vars["id"]
+// PUT
+func UpdateProductByID(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	productID := vars["id"]
 
-// 	convertedId, err := strconv.ParseInt(productID, 10, 64)
-// 	if err != nil {
-// 		ResponseError(w, "invalid request payload", http.StatusBadRequest)
-// 		return
-// 	}
+	convertedId, err := strconv.ParseInt(productID, 10, 64)
+	if err != nil {
+		ResponseError(w, "invalid request payload", http.StatusBadRequest)
+		return
+	}
 
-// 	var updateProduct models.Product
-// 	json.NewDecoder(r.Body).Decode(&updateProduct)
+	var updateProduct models.Product
+	err = json.NewDecoder(r.Body).Decode(&updateProduct)
+	if err != nil {
+		ResponseError(w, "Invalid request payload", http.StatusBadRequest)
+		return
+	}
+	err = repository.UpdateProductByID(convertedId, updateProduct)
+	if err != nil {
+		ResponseError(w, "Product not found", http.StatusNotFound)
+		return
+	}
 
-// 	index := -1
-// 	for i, value := range products {
-// 		if value.ID == convertedId {
-// 			index = i
-// 			if updateProduct.Name != "" {
-// 				products[i].Name = updateProduct.Name
-// 			}
-// 			if updateProduct.Price > 0 {
-// 				products[i].Price = updateProduct.Price
-// 			}
-// 			break
-// 		}
-// 	}
-
-// 	if index == -1 {
-// 		ResponseError(w, "Product not found", http.StatusNotFound)
-// 		return
-// 	}
-
-// 	w.Header().Set("Content-Type", "application/json")
-// 	w.WriteHeader(http.StatusOK)
-// 	json.NewEncoder(w).Encode(products[index])
-// }
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "Product updated successfully"})
+}
