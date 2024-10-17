@@ -7,6 +7,7 @@ import (
 
 	"github.com/bda-mota/MyFirstCRUD/myapp/config"
 	"github.com/bda-mota/MyFirstCRUD/myapp/handlers"
+	"github.com/bda-mota/MyFirstCRUD/myapp/repository"
 	"github.com/gorilla/mux"
 )
 
@@ -18,11 +19,15 @@ func main() {
 		log.Fatalf("Could not connect to the database: %v", err)
 	}
 	defer db.Close()
-	r.HandleFunc("/products", handlers.CreateProduct).Methods("POST")
-	r.HandleFunc("/products/list", handlers.GetAllProducts).Methods("GET")
-	r.HandleFunc("/products/{id}", handlers.GetProductByID).Methods("GET")
-	r.HandleFunc("/products/{id}", handlers.DeleteProductByID).Methods("DELETE")
-	r.HandleFunc("/products/{id}", handlers.UpdateProductByID).Methods("PUT")
+
+	productRepo := &repository.PostgresProductRepository{DB: db}
+	productHandler := &handlers.ProductHandler{Repo: productRepo}
+
+	r.HandleFunc("/products", productHandler.CreateProduct).Methods("POST")
+	r.HandleFunc("/products/list", productHandler.GetAllProducts).Methods("GET")
+	r.HandleFunc("/products/{id}", productHandler.GetProductByID).Methods("GET")
+	r.HandleFunc("/products/{id}", productHandler.DeleteProductByID).Methods("DELETE")
+	r.HandleFunc("/products/{id}", productHandler.UpdateProductByID).Methods("PUT")
 
 	r.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Route not found", http.StatusNotFound)

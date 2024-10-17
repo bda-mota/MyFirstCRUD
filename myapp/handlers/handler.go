@@ -10,8 +10,12 @@ import (
 	"github.com/gorilla/mux"
 )
 
+type ProductHandler struct {
+	Repo repository.ProductRepository
+}
+
 // POST
-func CreateProduct(w http.ResponseWriter, r *http.Request) {
+func (h *ProductHandler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 	var newProduct models.Product
 
 	if err := json.NewDecoder(r.Body).Decode(&newProduct); err != nil {
@@ -27,7 +31,7 @@ func CreateProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id, err := repository.InsertProduct(newProduct)
+	id, err := h.Repo.InsertProduct(newProduct)
 	if err != nil {
 		ResponseError(w, "Could not insert the product", http.StatusInternalServerError)
 		return
@@ -42,7 +46,7 @@ func CreateProduct(w http.ResponseWriter, r *http.Request) {
 }
 
 // GET
-func GetProductByID(w http.ResponseWriter, r *http.Request) {
+func (h *ProductHandler) GetProductByID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	productID := vars["id"]
 
@@ -52,7 +56,7 @@ func GetProductByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	getProduct, err := repository.GetProductByID(convertedId)
+	getProduct, err := h.Repo.GetProductByID(convertedId)
 	if err != nil {
 		ResponseError(w, "could not retrieve product", http.StatusBadRequest)
 		return
@@ -68,7 +72,7 @@ func GetProductByID(w http.ResponseWriter, r *http.Request) {
 }
 
 // DELETE
-func DeleteProductByID(w http.ResponseWriter, r *http.Request) {
+func (h *ProductHandler) DeleteProductByID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	productID := vars["id"]
 
@@ -78,7 +82,7 @@ func DeleteProductByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = repository.DeleteProductByID(convertedId); err != nil {
+	if err = h.Repo.DeleteProductByID(convertedId); err != nil {
 		ResponseError(w, "product not found", http.StatusNotFound)
 		return
 	}
@@ -89,7 +93,7 @@ func DeleteProductByID(w http.ResponseWriter, r *http.Request) {
 }
 
 // PUT
-func UpdateProductByID(w http.ResponseWriter, r *http.Request) {
+func (h *ProductHandler) UpdateProductByID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	productID := vars["id"]
 
@@ -105,7 +109,7 @@ func UpdateProductByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = repository.UpdateProductByID(convertedId, updateProduct); err != nil {
+	if err = h.Repo.UpdateProductByID(convertedId, updateProduct); err != nil {
 		ResponseError(w, "Product not found", http.StatusNotFound)
 		return
 	}
@@ -116,8 +120,8 @@ func UpdateProductByID(w http.ResponseWriter, r *http.Request) {
 }
 
 // GET ALL
-func GetAllProducts(w http.ResponseWriter, r *http.Request) {
-	list, err := repository.GetAllProducts()
+func (h *ProductHandler) GetAllProducts(w http.ResponseWriter, r *http.Request) {
+	list, err := h.Repo.GetAllProducts()
 	if err != nil {
 		ResponseError(w, "products not found", http.StatusNotFound)
 		return

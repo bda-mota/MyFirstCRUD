@@ -8,8 +8,19 @@ import (
 	"github.com/bda-mota/MyFirstCRUD/myapp/models"
 )
 
+type ProductRepository interface {
+	InsertProduct(p models.Product) (int64, error)
+	GetProductByID(id int64) (models.Product, error)
+	DeleteProductByID(id int64) error
+	UpdateProductByID(id int64, p models.Product) error
+	GetAllProducts() (sp []models.Product, err error)
+}
+type PostgresProductRepository struct {
+	DB *sql.DB
+}
+
 // POST
-func InsertProduct(p models.Product) (int64, error) {
+func (r *PostgresProductRepository) InsertProduct(p models.Product) (int64, error) {
 	conn, err := config.OpenConn()
 	if err != nil {
 		return 0, fmt.Errorf("could not connect to the database: %v", err)
@@ -19,7 +30,7 @@ func InsertProduct(p models.Product) (int64, error) {
 	sql := `INSERT INTO products (name, price) VALUES ($1, $2) RETURNING id`
 
 	var id int64
-	if err = conn.QueryRow(sql, p.Name, p.Price).Scan(&id); err != nil {
+	if err = r.DB.QueryRow(sql, p.Name, p.Price).Scan(&id); err != nil {
 		return 0, fmt.Errorf("could not insert product: %v", err)
 	}
 
@@ -27,7 +38,7 @@ func InsertProduct(p models.Product) (int64, error) {
 }
 
 // GET
-func GetProductByID(id int64) (models.Product, error) {
+func (r *PostgresProductRepository) GetProductByID(id int64) (models.Product, error) {
 	conn, err := config.OpenConn()
 	if err != nil {
 		return models.Product{}, fmt.Errorf("could not connect to the database: %v", err)
@@ -48,7 +59,7 @@ func GetProductByID(id int64) (models.Product, error) {
 }
 
 // DELETE
-func DeleteProductByID(id int64) error {
+func (r *PostgresProductRepository) DeleteProductByID(id int64) error {
 	conn, err := config.OpenConn()
 	if err != nil {
 		return err
@@ -72,7 +83,7 @@ func DeleteProductByID(id int64) error {
 }
 
 // PUT
-func UpdateProductByID(id int64, p models.Product) error {
+func (r *PostgresProductRepository) UpdateProductByID(id int64, p models.Product) error {
 	conn, err := config.OpenConn()
 	if err != nil {
 		return err
@@ -93,7 +104,7 @@ func UpdateProductByID(id int64, p models.Product) error {
 }
 
 // GET ALL
-func GetAllProducts() (sp []models.Product, err error) {
+func (r *PostgresProductRepository) GetAllProducts() (sp []models.Product, err error) {
 	conn, err := config.OpenConn()
 	if err != nil {
 		return
