@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/bda-mota/MyFirstCRUD/myapp/config"
 	"github.com/bda-mota/MyFirstCRUD/myapp/handlers"
 	"github.com/gorilla/mux"
 )
@@ -12,7 +13,13 @@ import (
 func main() {
 	r := mux.NewRouter()
 
+	db, err := config.OpenConn()
+	if err != nil {
+		log.Fatalf("Could not connect to the database: %v", err)
+	}
+	defer db.Close()
 	r.HandleFunc("/products", handlers.CreateProduct).Methods("POST")
+	r.HandleFunc("/products/list", handlers.GetAllProducts).Methods("GET")
 	r.HandleFunc("/products/{id}", handlers.GetProductByID).Methods("GET")
 	r.HandleFunc("/products/{id}", handlers.DeleteProductByID).Methods("DELETE")
 	r.HandleFunc("/products/{id}", handlers.UpdateProductByID).Methods("PUT")

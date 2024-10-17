@@ -3,7 +3,7 @@ package models
 type Product struct {
 	ID    int64   `json:"id"`
 	Name  string  `json:"name"`
-	Value float64 `json:"value"`
+	Price float64 `json:"price"`
 }
 
 type RequestError struct {

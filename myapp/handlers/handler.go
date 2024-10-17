@@ -6,35 +6,42 @@ import (
 	"strconv"
 
 	"github.com/bda-mota/MyFirstCRUD/myapp/models"
+	"github.com/bda-mota/MyFirstCRUD/myapp/repository"
 	"github.com/gorilla/mux"
 )
 
-var products []models.Product
-var id int64
-
+// POST
 func CreateProduct(w http.ResponseWriter, r *http.Request) {
 	var newProduct models.Product
 
-	json.NewDecoder(r.Body).Decode(&newProduct)
+	if err := json.NewDecoder(r.Body).Decode(&newProduct); err != nil {
+		http.Error(w, "Invalid input", http.StatusBadRequest)
+	}
 
 	if newProduct.Name == "" {
 		ResponseError(w, "Name is required", http.StatusBadRequest)
 		return
 	}
-	if newProduct.Value <= 0 {
-		ResponseError(w, "Value must be greater than 0", http.StatusBadRequest)
+	if newProduct.Price <= 0 {
+		ResponseError(w, "Price must be greater than 0", http.StatusBadRequest)
 		return
 	}
 
-	id++
-	newProduct.ID = id
-	products = append(products, newProduct)
+	id, err := repository.InsertProduct(newProduct)
+	if err != nil {
+		ResponseError(w, "Could not insert the product", http.StatusInternalServerError)
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(products)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"message": "Product created successfully",
+		"id":      id,
+	})
 }
 
+// GET
 func GetProductByID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	productID := vars["id"]
@@ -45,14 +52,11 @@ func GetProductByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var getProduct models.Product
-	for _, value := range products {
-		if value.ID == convertedId {
-			getProduct = value
-			break
-		}
+	getProduct, err := repository.GetProductByID(convertedId)
+	if err != nil {
+		ResponseError(w, "could not retrieve product", http.StatusBadRequest)
+		return
 	}
-
 	if getProduct.ID == 0 {
 		ResponseError(w, "Product not found", http.StatusNotFound)
 		return
@@ -63,6 +67,7 @@ func GetProductByID(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(getProduct)
 }
 
+// DELETE
 func DeleteProductByID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	productID := vars["id"]
@@ -73,23 +78,17 @@ func DeleteProductByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	index := -1
-	for i, value := range products {
-		if value.ID == convertedId {
-			index = i
-			break
-		}
-	}
-
-	if index == -1 {
-		ResponseError(w, "Product not found", http.StatusNotFound)
+	if err = repository.DeleteProductByID(convertedId); err != nil {
+		ResponseError(w, "product not found", http.StatusNotFound)
 		return
 	}
 
-	products = append(products[:index], products[index+1:]...)
-	w.WriteHeader(http.StatusNoContent)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "Product deleted successfully"})
 }
 
+// PUT
 func UpdateProductByID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	productID := vars["id"]
@@ -101,28 +100,30 @@ func UpdateProductByID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var updateProduct models.Product
-	json.NewDecoder(r.Body).Decode(&updateProduct)
-
-	index := -1
-	for i, value := range products {
-		if value.ID == convertedId {
-			index = i
-			if updateProduct.Name != "" {
-				products[i].Name = updateProduct.Name
-			}
-			if updateProduct.Value > 0 {
-				products[i].Value = updateProduct.Value
-			}
-			break
-		}
+	if err = json.NewDecoder(r.Body).Decode(&updateProduct); err != nil {
+		ResponseError(w, "Invalid request payload", http.StatusBadRequest)
+		return
 	}
 
-	if index == -1 {
+	if err = repository.UpdateProductByID(convertedId, updateProduct); err != nil {
 		ResponseError(w, "Product not found", http.StatusNotFound)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(products[index])
+	json.NewEncoder(w).Encode(map[string]string{"message": "Product updated successfully"})
+}
+
+// GET ALL
+func GetAllProducts(w http.ResponseWriter, r *http.Request) {
+	list, err := repository.GetAllProducts()
+	if err != nil {
+		ResponseError(w, "products not found", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(list)
 }
