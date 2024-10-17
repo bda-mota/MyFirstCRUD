@@ -19,9 +19,7 @@ func InsertProduct(p models.Product) (int64, error) {
 	sql := `INSERT INTO products (name, price) VALUES ($1, $2) RETURNING id`
 
 	var id int64
-	err = conn.QueryRow(sql, p.Name, p.Price).Scan(&id)
-
-	if err != nil {
+	if err = conn.QueryRow(sql, p.Name, p.Price).Scan(&id); err != nil {
 		return 0, fmt.Errorf("could not insert product: %v", err)
 	}
 
@@ -70,7 +68,6 @@ func DeleteProductByID(id int64) error {
 	if rowsAffected == 0 {
 		return fmt.Errorf("no product found with ID %d", id)
 	}
-
 	return nil
 }
 
@@ -112,8 +109,7 @@ func GetAllProducts() (sp []models.Product, err error) {
 	for rows.Next() {
 		var p models.Product
 
-		err = rows.Scan(&p.ID, &p.Name, &p.Price)
-		if err != nil {
+		if err = rows.Scan(&p.ID, &p.Name, &p.Price); err != nil {
 			continue
 		}
 

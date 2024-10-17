@@ -14,8 +14,7 @@ import (
 func CreateProduct(w http.ResponseWriter, r *http.Request) {
 	var newProduct models.Product
 
-	err := json.NewDecoder(r.Body).Decode(&newProduct)
-	if err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&newProduct); err != nil {
 		http.Error(w, "Invalid input", http.StatusBadRequest)
 	}
 
@@ -28,7 +27,11 @@ func CreateProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id, _ := repository.InsertProduct(newProduct)
+	id, err := repository.InsertProduct(newProduct)
+	if err != nil {
+		ResponseError(w, "Could not insert the product", http.StatusInternalServerError)
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -75,13 +78,14 @@ func DeleteProductByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = repository.DeleteProductByID(convertedId)
-	if err != nil {
+	if err = repository.DeleteProductByID(convertedId); err != nil {
 		ResponseError(w, "product not found", http.StatusNotFound)
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "Product deleted successfully"})
 }
 
 // PUT
@@ -96,13 +100,12 @@ func UpdateProductByID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var updateProduct models.Product
-	err = json.NewDecoder(r.Body).Decode(&updateProduct)
-	if err != nil {
+	if err = json.NewDecoder(r.Body).Decode(&updateProduct); err != nil {
 		ResponseError(w, "Invalid request payload", http.StatusBadRequest)
 		return
 	}
-	err = repository.UpdateProductByID(convertedId, updateProduct)
-	if err != nil {
+
+	if err = repository.UpdateProductByID(convertedId, updateProduct); err != nil {
 		ResponseError(w, "Product not found", http.StatusNotFound)
 		return
 	}
