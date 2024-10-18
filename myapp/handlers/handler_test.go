@@ -2,6 +2,7 @@ package handlers_test
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -12,10 +13,11 @@ import (
 	"github.com/bda-mota/MyFirstCRUD/myapp/handlers"
 	"github.com/bda-mota/MyFirstCRUD/myapp/models"
 	"github.com/bda-mota/MyFirstCRUD/myapp/repository"
+	"github.com/gorilla/mux"
 )
 
-// ****** CREATE PRODUCT ******
-func TestCreateProduct(t *testing.T) {
+// ****** CREATE ******
+func TestCreateProduct_Success(t *testing.T) {
 	//simulando a função InsertProduct
 	mockRepo := &repository.MockManualProductRepository{
 		InsertProductFunc: func(p models.Product) (int64, error) {
@@ -25,9 +27,7 @@ func TestCreateProduct(t *testing.T) {
 	}
 
 	//indicando para o handler quer ele irá chamar, nesse caso o handler irá chamar o mock ao invés da funCão real
-	handler := handlers.ProductHandler{
-		Repo: mockRepo,
-	}
+	handler := handlers.ProductHandler{Repo: mockRepo}
 
 	//criando o produto da requisição
 	product := models.Product{Name: "Test Product", Price: 10}
@@ -49,7 +49,7 @@ func TestCreateProduct(t *testing.T) {
 	actualResponse := strings.TrimSpace(rr.Body.String())
 	expectedResponse := `{"id":1,"message":"Product created successfully"}`
 	if actualResponse != expectedResponse {
-		t.Errorf("expected body %s, got %s", expectedResponse, rr.Body.String())
+		t.Errorf("expected body %s, got %s", expectedResponse, actualResponse)
 	}
 }
 
@@ -60,9 +60,7 @@ func TestCreateProduct_InvalidPrice(t *testing.T) {
 		},
 	}
 
-	handler := handlers.ProductHandler{
-		Repo: mockRepo,
-	}
+	handler := handlers.ProductHandler{Repo: mockRepo}
 
 	product := models.Product{Name: "Test Product", Price: 0}
 	body, _ := json.Marshal(product)
@@ -89,9 +87,7 @@ func TestCreateProduct_InvalidName(t *testing.T) {
 		},
 	}
 
-	handler := handlers.ProductHandler{
-		Repo: mockRepo,
-	}
+	handler := handlers.ProductHandler{Repo: mockRepo}
 
 	product := models.Product{Name: "", Price: 10}
 	body, _ := json.Marshal(product)
@@ -111,7 +107,7 @@ func TestCreateProduct_InvalidName(t *testing.T) {
 	}
 }
 
-func TestCreateProduct_RepositoryError(t *testing.T) {
+func TestCreateProduct_ServerError(t *testing.T) {
 	mockRepo := &repository.MockManualProductRepository{
 		InsertProductFunc: func(p models.Product) (int64, error) {
 			return 0, fmt.Errorf("database error")
@@ -137,7 +133,256 @@ func TestCreateProduct_RepositoryError(t *testing.T) {
 	}
 }
 
-// ****** UPDATE PRODUCT *******
-func TestGetProductByID(t *testing.T) {
+// ****** GET *******
+func TestGetProductByID_Success(t *testing.T) {
+	mockRepo := &repository.MockManualProductRepository{
+		GetProductByIDFunc: func(id int64) (models.Product, error) {
+			return models.Product{ID: 1, Name: "Test Product", Price: 10.0}, nil
+		},
+	}
 
+	handler := handlers.ProductHandler{Repo: mockRepo}
+
+	req, _ := http.NewRequest("GET", "/products/1", nil)
+	rr := httptest.NewRecorder()
+
+	router := mux.NewRouter()
+	router.HandleFunc("/products/{id}", handler.GetProductByID).Methods("GET")
+	router.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("expected status code %d, got %d", http.StatusOK, status)
+	}
+
+	expectedProduct := models.Product{ID: 1, Name: "Test Product", Price: 10.0}
+	var actualProduct models.Product
+	if err := json.NewDecoder(rr.Body).Decode(&actualProduct); err != nil {
+		t.Fatalf("failed to decode response %v", err)
+	}
+
+	if actualProduct != expectedProduct {
+		t.Errorf("expected product %v, got %v", expectedProduct, actualProduct)
+	}
+}
+
+func TestGetProductByID_NotFound(t *testing.T) {
+	mockRepo := &repository.MockManualProductRepository{
+		GetProductByIDFunc: func(id int64) (models.Product, error) {
+			return models.Product{}, nil
+		},
+	}
+
+	handler := handlers.ProductHandler{Repo: mockRepo}
+
+	req, _ := http.NewRequest("GET", "/products/0", nil)
+	rr := httptest.NewRecorder()
+
+	router := mux.NewRouter()
+	router.HandleFunc("/products/{id}", handler.GetProductByID).Methods("GET")
+	router.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusNotFound {
+		t.Errorf("expected status code %d, got %d", http.StatusNotFound, status)
+	}
+
+	actualResponse := strings.TrimSpace(rr.Body.String())
+	expectedResponse := `{"error":"Product not found","errorCode":404}`
+	if actualResponse != expectedResponse {
+		t.Errorf("expected product %v, got %v", expectedResponse, actualResponse)
+	}
+}
+
+func TestGetProductByID_ServerError(t *testing.T) {
+	mockRepo := &repository.MockManualProductRepository{
+		GetProductByIDFunc: func(id int64) (models.Product, error) {
+			return models.Product{}, fmt.Errorf("could not retrieve product")
+		},
+	}
+
+	handler := handlers.ProductHandler{Repo: mockRepo}
+
+	req, _ := http.NewRequest("GET", "/products/999", nil)
+	rr := httptest.NewRecorder()
+
+	router := mux.NewRouter()
+	router.HandleFunc("/products/{id}", handler.GetProductByID).Methods("GET")
+	router.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusInternalServerError {
+		t.Errorf("expected status code %d, got %d", http.StatusInternalServerError, status)
+	}
+
+	actualResponse := strings.TrimSpace(rr.Body.String())
+	expectedResponse := `{"error":"could not retrieve product","errorCode":500}`
+	if actualResponse != expectedResponse {
+		t.Errorf("expected product %v, got %v", expectedResponse, actualResponse)
+	}
+}
+
+// ****** DELETE *******
+func TestDeleteProductByID_Success(t *testing.T) {
+	mockRepo := &repository.MockManualProductRepository{
+		DeleteProductByIDFunc: func(id int64) error { return nil },
+	}
+
+	handler := handlers.ProductHandler{Repo: mockRepo}
+
+	req, _ := http.NewRequest("DELETE", "/products/1", nil)
+	rr := httptest.NewRecorder()
+
+	router := mux.NewRouter()
+	router.HandleFunc("/products/{id}", handler.DeleteProductByID).Methods("DELETE")
+	router.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("expected status code %d, got %d", http.StatusOK, status)
+	}
+
+	actualResponse := strings.TrimSpace(rr.Body.String())
+	expectedResponse := `{"message":"Product deleted successfully"}`
+	if actualResponse != expectedResponse {
+		t.Errorf("expected product %v, got %v", expectedResponse, actualResponse)
+	}
+}
+
+func TestDeleteProductByID_NotFound(t *testing.T) {
+	mockRepo := &repository.MockManualProductRepository{
+		DeleteProductByIDFunc: func(id int64) error {
+			return sql.ErrNoRows
+		},
+	}
+
+	handler := handlers.ProductHandler{Repo: mockRepo}
+
+	req, _ := http.NewRequest("DELETE", "/products/1", nil)
+	rr := httptest.NewRecorder()
+
+	router := mux.NewRouter()
+	router.HandleFunc("/products/{id}", handler.DeleteProductByID).Methods("DELETE")
+	router.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusNotFound {
+		t.Errorf("expected status code %d, got %d", http.StatusNotFound, status)
+	}
+
+	actualResponse := strings.TrimSpace(rr.Body.String())
+	expectedResponse := `{"error":"Product not found","errorCode":404}`
+	if actualResponse != expectedResponse {
+		t.Errorf("expected product %v, got %v", expectedResponse, actualResponse)
+	}
+}
+
+func TestDeleteProductByID_ServerError(t *testing.T) {
+	mockRepo := &repository.MockManualProductRepository{
+		DeleteProductByIDFunc: func(id int64) error {
+			return fmt.Errorf("could not delete product")
+		},
+	}
+
+	handler := handlers.ProductHandler{Repo: mockRepo}
+
+	req, _ := http.NewRequest("DELETE", "/products/1", nil)
+	rr := httptest.NewRecorder()
+
+	router := mux.NewRouter()
+	router.HandleFunc("/products/{id}", handler.DeleteProductByID).Methods("DELETE")
+	router.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusInternalServerError {
+		t.Errorf("expected status code %d, got %d", http.StatusInternalServerError, status)
+	}
+
+	actualResponse := strings.TrimSpace(rr.Body.String())
+	expectedResponse := `{"error":"could not delete product","errorCode":500}`
+	if actualResponse != expectedResponse {
+		t.Errorf("expected product %v, got %v", expectedResponse, actualResponse)
+	}
+}
+
+// ****** UPDATE *******
+func TestUpdateProductByID_Success(t *testing.T) {
+	mockRepo := &repository.MockManualProductRepository{
+		UpdateProductByIDFunc: func(id int64, p models.Product) error {
+			return nil
+		},
+	}
+
+	handler := handlers.ProductHandler{Repo: mockRepo}
+
+	product := models.Product{Name: "New name", Price: 10}
+	body, _ := json.Marshal(product)
+	req, _ := http.NewRequest("PUT", "/products/1", bytes.NewBuffer(body))
+	rr := httptest.NewRecorder()
+
+	router := mux.NewRouter()
+	router.HandleFunc("/products/{id}", handler.UpdateProductByID).Methods("PUT")
+	router.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("expected status code %d, got %d", http.StatusOK, status)
+	}
+
+	actualResponse := strings.TrimSpace(rr.Body.String())
+	expectedResponse := `{"message":"Product updated successfully"}`
+	if actualResponse != expectedResponse {
+		t.Errorf("expected product %v, got %v", expectedResponse, actualResponse)
+	}
+}
+
+func TestUpdateProductByID_NotFound(t *testing.T) {
+	mockRepo := &repository.MockManualProductRepository{
+		UpdateProductByIDFunc: func(id int64, p models.Product) error {
+			return fmt.Errorf("product not found")
+		},
+	}
+
+	handler := handlers.ProductHandler{Repo: mockRepo}
+
+	product := models.Product{Name: "non-existent name", Price: 10}
+	body, _ := json.Marshal(product)
+	req, _ := http.NewRequest("PUT", "/products/1", bytes.NewBuffer(body))
+	rr := httptest.NewRecorder()
+
+	router := mux.NewRouter()
+	router.HandleFunc("/products/{id}", handler.UpdateProductByID).Methods("PUT")
+	router.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusNotFound {
+		t.Errorf("expected status code %d, got %d", http.StatusNotFound, status)
+	}
+
+	actualResponse := strings.TrimSpace(rr.Body.String())
+	expectedResponse := `{"error":"Product not found","errorCode":404}`
+	if actualResponse != expectedResponse {
+		t.Errorf("expected product %v, got %v", expectedResponse, actualResponse)
+	}
+}
+
+func TestUpdateProductByID_ServerError(t *testing.T) {
+	mockRepo := &repository.MockManualProductRepository{
+		UpdateProductByIDFunc: func(id int64, p models.Product) error {
+			return fmt.Errorf("internal server error")
+		},
+	}
+
+	handler := handlers.ProductHandler{Repo: mockRepo}
+
+	product := models.Product{Name: "Test name", Price: 10}
+	body, _ := json.Marshal(product)
+	req, _ := http.NewRequest("PUT", "/products/1", bytes.NewBuffer(body))
+	rr := httptest.NewRecorder()
+
+	router := mux.NewRouter()
+	router.HandleFunc("/products/{id}", handler.UpdateProductByID).Methods("PUT")
+	router.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusInternalServerError {
+		t.Errorf("expected status code %d, got %d", http.StatusInternalServerError, status)
+	}
+
+	actualResponse := strings.TrimSpace(rr.Body.String())
+	expectedResponse := `{"error":"could not update product","errorCode":500}`
+	if actualResponse != expectedResponse {
+		t.Errorf("expected product %v, got %v", expectedResponse, actualResponse)
+	}
 }

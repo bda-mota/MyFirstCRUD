@@ -97,8 +97,11 @@ func (r *PostgresProductRepository) UpdateProductByID(id int64, p models.Product
 	}
 
 	rowsAffected, err := res.RowsAffected()
-	if err != nil || rowsAffected == 0 {
-		return fmt.Errorf("no product found with ID %d", id)
+	if err != nil {
+		return fmt.Errorf("error checking affected rows: %v", err)
+	}
+	if rowsAffected == 0 {
+		return fmt.Errorf("product not found")
 	}
 	return nil
 }

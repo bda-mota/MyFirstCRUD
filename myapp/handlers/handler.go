@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"database/sql"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -58,7 +59,7 @@ func (h *ProductHandler) GetProductByID(w http.ResponseWriter, r *http.Request) 
 
 	getProduct, err := h.Repo.GetProductByID(convertedId)
 	if err != nil {
-		ResponseError(w, "could not retrieve product", http.StatusBadRequest)
+		ResponseError(w, "could not retrieve product", http.StatusInternalServerError)
 		return
 	}
 	if getProduct.ID == 0 {
@@ -82,11 +83,15 @@ func (h *ProductHandler) DeleteProductByID(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if err = h.Repo.DeleteProductByID(convertedId); err != nil {
-		ResponseError(w, "product not found", http.StatusNotFound)
+	err = h.Repo.DeleteProductByID(convertedId)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			ResponseError(w, "Product not found", http.StatusNotFound)
+		} else {
+			ResponseError(w, "could not delete product", http.StatusInternalServerError)
+		}
 		return
 	}
-
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"message": "Product deleted successfully"})
@@ -105,12 +110,17 @@ func (h *ProductHandler) UpdateProductByID(w http.ResponseWriter, r *http.Reques
 
 	var updateProduct models.Product
 	if err = json.NewDecoder(r.Body).Decode(&updateProduct); err != nil {
-		ResponseError(w, "Invalid request payload", http.StatusBadRequest)
+		ResponseError(w, "Could not update product", http.StatusInternalServerError)
 		return
 	}
 
-	if err = h.Repo.UpdateProductByID(convertedId, updateProduct); err != nil {
-		ResponseError(w, "Product not found", http.StatusNotFound)
+	err = h.Repo.UpdateProductByID(convertedId, updateProduct)
+	if err != nil {
+		if err.Error() == "product not found" {
+			ResponseError(w, "Product not found", http.StatusNotFound)
+		} else {
+			ResponseError(w, "could not update product", http.StatusInternalServerError)
+		}
 		return
 	}
 
