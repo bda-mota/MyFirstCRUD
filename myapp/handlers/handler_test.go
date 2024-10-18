@@ -16,27 +16,36 @@ import (
 
 // ****** CREATE PRODUCT ******
 func TestCreateProduct(t *testing.T) {
+	//simulando a função InsertProduct
 	mockRepo := &repository.MockManualProductRepository{
 		InsertProductFunc: func(p models.Product) (int64, error) {
+			//define o que a função irá retornar, simula o acesso ao banco de dados, nesse caso, sucesso
 			return 1, nil
 		},
 	}
 
+	//indicando para o handler quer ele irá chamar, nesse caso o handler irá chamar o mock ao invés da funCão real
 	handler := handlers.ProductHandler{
 		Repo: mockRepo,
 	}
 
+	//criando o produto da requisição
 	product := models.Product{Name: "Test Product", Price: 10}
+	//mudando ele para formato json, para ser o r.body
 	body, _ := json.Marshal(product)
+	//cria uma nova requisição do tipo POST para o endpoint /products
 	req, _ := http.NewRequest("POST", "/products", bytes.NewBuffer(body))
+	//para capturar a resposta da requisição, falso responseWriter
 	rr := httptest.NewRecorder()
 
 	handler.CreateProduct(rr, req)
 
+	//verifica status da resposta, e se for diferente retorna um erro
 	if status := rr.Code; status != http.StatusOK {
 		t.Errorf("expected status code %d, got %d", http.StatusOK, status)
 	}
 
+	//verificando o corpo da resposta
 	actualResponse := strings.TrimSpace(rr.Body.String())
 	expectedResponse := `{"id":1,"message":"Product created successfully"}`
 	if actualResponse != expectedResponse {
