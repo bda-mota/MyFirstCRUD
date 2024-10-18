@@ -133,7 +133,7 @@ func (h *ProductHandler) UpdateProductByID(w http.ResponseWriter, r *http.Reques
 func (h *ProductHandler) GetAllProducts(w http.ResponseWriter, r *http.Request) {
 	list, err := h.Repo.GetAllProducts()
 	if err != nil {
-		ResponseError(w, "products not found", http.StatusNotFound)
+		ResponseError(w, "no products found", http.StatusNotFound)
 		return
 	}
 

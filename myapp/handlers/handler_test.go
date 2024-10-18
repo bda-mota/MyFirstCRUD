@@ -386,3 +386,58 @@ func TestUpdateProductByID_ServerError(t *testing.T) {
 		t.Errorf("expected product %v, got %v", expectedResponse, actualResponse)
 	}
 }
+
+func TestGetAll_Success(t *testing.T) {
+	mockRepo := &repository.MockManualProductRepository{
+		GetAllProductsFunc: func() (sp []models.Product, err error) {
+			return []models.Product{
+				{ID: 1, Name: "Product 1", Price: 10.0},
+				{ID: 2, Name: "Product 2", Price: 15.0},
+			}, nil
+		},
+	}
+
+	handler := handlers.ProductHandler{Repo: mockRepo}
+	req, _ := http.NewRequest("GET", "/products", nil)
+	rr := httptest.NewRecorder()
+
+	router := mux.NewRouter()
+	router.HandleFunc("/products", handler.GetAllProducts).Methods("GET")
+	router.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("expected status code %d, got %d", http.StatusOK, status)
+	}
+
+	expectedResponse := `[{"id":1,"name":"Product 1","price":10},{"id":2,"name":"Product 2","price":15}]`
+	actualResponse := strings.TrimSpace(rr.Body.String())
+	if actualResponse != expectedResponse {
+		t.Errorf("expected body %s, got %s", expectedResponse, actualResponse)
+	}
+}
+
+func TestGetAll_NotFound(t *testing.T) {
+	mockRepo := &repository.MockManualProductRepository{
+		GetAllProductsFunc: func() (sp []models.Product, err error) {
+			return []models.Product{}, fmt.Errorf("no products found")
+		},
+	}
+
+	handler := handlers.ProductHandler{Repo: mockRepo}
+	req, _ := http.NewRequest("GET", "/products", nil)
+	rr := httptest.NewRecorder()
+
+	router := mux.NewRouter()
+	router.HandleFunc("/products", handler.GetAllProducts).Methods("GET")
+	router.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusNotFound {
+		t.Errorf("expected status code %d, got %d", http.StatusNotFound, status)
+	}
+
+	expectedResponse := `{"error":"no products found","errorCode":404}`
+	actualResponse := strings.TrimSpace(rr.Body.String())
+	if actualResponse != expectedResponse {
+		t.Errorf("expected body %s, got %s", expectedResponse, actualResponse)
+	}
+}

@@ -129,5 +129,9 @@ func (r *PostgresProductRepository) GetAllProducts() (sp []models.Product, err e
 
 		sp = append(sp, p)
 	}
-	return
+
+	if len(sp) == 0 {
+		return nil, fmt.Errorf("no products found")
+	}
+	return sp, nil
 }
