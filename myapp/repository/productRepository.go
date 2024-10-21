@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/bda-mota/MyFirstCRUD/myapp/config"
 	"github.com/bda-mota/MyFirstCRUD/myapp/models"
 )
 
@@ -21,16 +20,10 @@ type PostgresProductRepository struct {
 
 // POST
 func (r *PostgresProductRepository) InsertProduct(p models.Product) (int64, error) {
-	conn, err := config.OpenConn()
-	if err != nil {
-		return 0, fmt.Errorf("could not connect to the database: %v", err)
-	}
-	defer conn.Close()
-
 	sql := `INSERT INTO products (name, price) VALUES ($1, $2) RETURNING id`
 
 	var id int64
-	if err = r.DB.QueryRow(sql, p.Name, p.Price).Scan(&id); err != nil {
+	if err := r.DB.QueryRow(sql, p.Name, p.Price).Scan(&id); err != nil {
 		return 0, fmt.Errorf("could not insert product: %v", err)
 	}
 
@@ -39,15 +32,9 @@ func (r *PostgresProductRepository) InsertProduct(p models.Product) (int64, erro
 
 // GET
 func (r *PostgresProductRepository) GetProductByID(id int64) (models.Product, error) {
-	conn, err := config.OpenConn()
-	if err != nil {
-		return models.Product{}, fmt.Errorf("could not connect to the database: %v", err)
-	}
-	defer conn.Close()
-
 	var getProduct models.Product
 	row := `SELECT id, name, price FROM products WHERE id = $1`
-	err = conn.QueryRow(row, id).Scan(&getProduct.ID, &getProduct.Name, &getProduct.Price)
+	err := r.DB.QueryRow(row, id).Scan(&getProduct.ID, &getProduct.Name, &getProduct.Price)
 
 	if err == sql.ErrNoRows {
 		return models.Product{}, nil
@@ -60,14 +47,8 @@ func (r *PostgresProductRepository) GetProductByID(id int64) (models.Product, er
 
 // DELETE
 func (r *PostgresProductRepository) DeleteProductByID(id int64) error {
-	conn, err := config.OpenConn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-
 	sql := `DELETE FROM products WHERE id = $1`
-	res, err := conn.Exec(sql, id)
+	res, err := r.DB.Exec(sql, id)
 	if err != nil {
 		return fmt.Errorf("could not delete product: %v", err)
 	}
@@ -84,14 +65,8 @@ func (r *PostgresProductRepository) DeleteProductByID(id int64) error {
 
 // PUT
 func (r *PostgresProductRepository) UpdateProductByID(id int64, p models.Product) error {
-	conn, err := config.OpenConn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-
 	sql := `UPDATE products SET name = $1, price = $2 WHERE id = $3`
-	res, err := conn.Exec(sql, p.Name, p.Price, id)
+	res, err := r.DB.Exec(sql, p.Name, p.Price, id)
 	if err != nil {
 		return fmt.Errorf("could not update product: %v", err)
 	}
@@ -108,13 +83,7 @@ func (r *PostgresProductRepository) UpdateProductByID(id int64, p models.Product
 
 // GET ALL
 func (r *PostgresProductRepository) GetAllProducts() (sp []models.Product, err error) {
-	conn, err := config.OpenConn()
-	if err != nil {
-		return
-	}
-	defer conn.Close()
-
-	rows, err := conn.Query(`SELECT * FROM products`)
+	rows, err := r.DB.Query(`SELECT * FROM products`)
 	if err != nil {
 		return
 	}
